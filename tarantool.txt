@@ -1,0 +1,15 @@
+box.cfg{listen = 3301}
+prod = box.schema.space.create("db3")
+prod:format({
+         {name = 'id', type = 'string'},
+         {name = 'low_text', type = 'string'},
+         {name = 'up_text', type = 'string'},
+         {name = 'picture', type = 'varbinary'}
+         })
+prod:create_index('primary', {
+         type = 'hash',
+         parts = {'id'}
+         })
+
+
+
