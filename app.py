@@ -1,14 +1,16 @@
+import os
 import random
 import uuid
 
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, render_template
 from PIL import Image, ImageDraw, ImageFont
 import tarantool
 import Levenshtein
 import cv2
 from image_similarity_measures.quality_metrics import ssim
 
-TMP_FILE_NAME = "tmp.jpg"
+TMP_FILE_NAME = "static/tmp.jpg"
+TMP2_FILE_NAME = "static/tmp2.jpg"
 connection = tarantool.connect("localhost", 3301)
 db = connection.space("db3")
 app = Flask(__name__)
@@ -16,6 +18,7 @@ font = ImageFont.truetype("arial.ttf", 48)
 memes = []
 with open("memes.txt", "r") as file:
     memes = file.readlines()
+
 
 @app.route('/set', methods=['POST'])
 def do_set():
@@ -62,26 +65,11 @@ def do_set():
         return "what?"
 
 
-
 @app.route('/get', methods=['GET'])
 def do_get():
     id = request.args.get("id")
     data = db.select(id)[0]
-    with open(TMP_FILE_NAME, "wb") as file:
-        file.write(data[3])
-    image = Image.open(TMP_FILE_NAME)
-    draw_text = ImageDraw.Draw(image)
-    draw_text.text(
-        ((image.width - draw_text.textsize(data[1], font)[0]) / 2, 100),
-        data[1],
-        font=font,
-    )
-    draw_text.text(
-        ((image.width - draw_text.textsize(data[2], font)[0]) / 2, image.height - 100),
-        data[2],
-        font=font,
-    )
-    image.save(TMP_FILE_NAME)
+    create_image_with_text(data[1], data[2], data[3], TMP_FILE_NAME)
     return send_file(TMP_FILE_NAME)
 
 
@@ -92,13 +80,43 @@ def do_clear():
     return str(len(db.select()))
 
 
+@app.route('/', methods=['GET'])
+def do_template_get():
+    files = db.select()
+    if (len(files) == 0):
+        return ""
+    create_image_with_text(files[random.randint(0, len(files) - 1)][1],
+                           files[random.randint(0, len(files) - 1)][2],
+                           files[random.randint(0, len(files) - 1)][3], TMP2_FILE_NAME)
+    return render_template('login.html', user_image=TMP2_FILE_NAME)
+
+
 def get_random_mem_phrase():
     return memes[random.randint(0, len(memes) - 1)]
+
 
 def create_new_meme(up_text: str, low_text: str, picture: bytes) -> str:
     id = uuid.uuid1()
     db.insert((str(id), up_text, low_text, picture))
     return str(id)
+
+
+def create_image_with_text(up_text: str, low_text: str, picture: bytes, target_file_name: str):
+    with open(target_file_name, "wb") as file:
+        file.write(picture)
+    image = Image.open(target_file_name)
+    add_text_to_image(up_text, image, 100)
+    add_text_to_image(low_text, image, image.height - 100)
+    image.save(target_file_name)
+
+
+def add_text_to_image(text: str, image: Image, height: int):
+    draw_text = ImageDraw.Draw(image)
+    draw_text.text(
+        ((image.width - draw_text.textsize(text, font)[0]) / 2, height),
+        text,
+        font=font,
+    )
 
 
 if __name__ == '__main__':
