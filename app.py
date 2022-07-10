@@ -11,19 +11,21 @@ from image_similarity_measures.quality_metrics import ssim
 
 PATTERNS = ["#0077FF", "#00EAFF", "#8024C0", "#BEB6AE", "#FF3985", "#17D685"] + \
            [f"static/skins/{str(i)}.png" for i in range(1, 13)]
-print(PATTERNS)
 TMP_FILE_NAME = "static/tmp.png"
 TMP2_FILE_NAME = "static/tmp2.png"
 PNG_FILE_NAME = "static/convert.png"
+FONT = "vksans.ttf"
+ALIGN = 10
+
+
 connection = tarantool.connect("localhost", 3301)
 db = connection.space("db3")
+
 app = Flask(__name__)
-FONT = "vksans.ttf"
+
 memes = []
 with open("memes.txt", "r") as file:
     memes = file.readlines()
-
-ALIGN = 10
 
 
 def vk_magic(file_name: str):
@@ -134,7 +136,7 @@ def create_image_with_text(up_text: str, low_text: str, picture: bytes, target_f
     with open(target_file_name, "wb") as file:
         file.write(picture)
     image = Image.open(target_file_name)
-    add_text_to_image(up_text, image, min(70, image.height / 5))
+    add_text_to_image(up_text, image, min(30, image.height / 10))
     add_text_to_image(low_text, image, max(image.height - 100, int(image.height * 0.8)))
     image.save(target_file_name)
 
