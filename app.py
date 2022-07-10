@@ -1,13 +1,12 @@
-import os
 import random
 import subprocess
 import uuid
 
-from flask import Flask, request, send_file, render_template
-from PIL import Image, ImageDraw, ImageFont
-import tarantool
 import Levenshtein
 import cv2
+import tarantool
+from PIL import Image, ImageDraw, ImageFont
+from flask import Flask, request, send_file, render_template
 from image_similarity_measures.quality_metrics import ssim
 
 PATTERNS = ["#0077FF", "#00EAFF", "#8024C0", "#BEB6AE", "#FF3985", "#17D685"] + \
@@ -18,7 +17,7 @@ PNG_FILE_NAME = "static/convert.png"
 connection = tarantool.connect("localhost", 3301)
 db = connection.space("db3")
 app = Flask(__name__)
-font = ImageFont.truetype("vksans.ttf", 48)
+FONT = "vksans.ttf"
 memes = []
 with open("memes.txt", "r") as file:
     memes = file.readlines()
@@ -131,18 +130,30 @@ def create_image_with_text(up_text: str, low_text: str, picture: bytes, target_f
     with open(target_file_name, "wb") as file:
         file.write(picture)
     image = Image.open(target_file_name)
-    add_text_to_image(up_text, image, 70)
-    add_text_to_image(low_text, image, image.height - 100)
+    add_text_to_image(up_text, image, min(70, image.height / 5))
+    add_text_to_image(low_text, image, max(image.height - 100, int(image.height * 0.8)))
     image.save(target_file_name)
 
 
 def add_text_to_image(text: str, image: Image, height: int):
     draw_text = ImageDraw.Draw(image)
+    font= adaptive_font_generator(draw_text, text, image.width, image.height)
     draw_text.text(
         ((image.width - draw_text.textsize(text, font)[0]) / 2, height),
         text,
         font=font,
+        fill="#000000"
     )
+
+
+def adaptive_font_generator(draw_text: ImageDraw, text: str, width: int, height: int):
+    current = 9
+    while True:
+        current += 3
+        text_size = draw_text.textsize(text, ImageFont.truetype(FONT, current))
+        if text_size[0] > width * 5 / 6 or text_size[1] > height / 5:
+            break
+    return ImageFont.truetype(FONT, current)
 
 
 if __name__ == '__main__':
