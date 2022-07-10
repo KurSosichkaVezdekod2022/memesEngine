@@ -11,6 +11,7 @@ from image_similarity_measures.quality_metrics import ssim
 
 PATTERNS = ["#0077FF", "#00EAFF", "#8024C0", "#BEB6AE", "#FF3985", "#17D685"] + \
            [f"static/skins/{str(i)}.png" for i in range(1, 13)]
+print(PATTERNS)
 TMP_FILE_NAME = "static/tmp.png"
 TMP2_FILE_NAME = "static/tmp2.png"
 PNG_FILE_NAME = "static/convert.png"
@@ -22,11 +23,13 @@ memes = []
 with open("memes.txt", "r") as file:
     memes = file.readlines()
 
+ALIGN = 10
 
-def magick(file_name: str):
+
+def vk_magic(file_name: str):
     image = Image.open(file_name)
-    points = ((5, 5), (image.width - 5, 5),
-              (5, image.height - 5), (image.width - 5, image.height - 5))
+    points = ((ALIGN, ALIGN), (image.width - ALIGN, ALIGN),
+              (ALIGN, image.height - ALIGN), (image.width - ALIGN, image.height - ALIGN))
     image.close()
     bashCommand = f"convert {file_name} -quality 100 {PNG_FILE_NAME}"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
@@ -49,7 +52,7 @@ def do_set():
     pic = request.get_data()
     with open(TMP_FILE_NAME, "wb") as file:
         file.write(pic)
-    magick(TMP_FILE_NAME)
+    vk_magic(TMP_FILE_NAME)
     with open(TMP_FILE_NAME, "rb") as file:
         pic = file.read(2 ** 32)
     if up_text and low_text and len(pic) > 0:
@@ -70,6 +73,7 @@ def do_set():
             return create_new_meme(get_random_mem_phrase(), get_random_mem_phrase(), pic)
         max_sim = -1
         max_sim_id = ""
+
         picture = cv2.imread(TMP_FILE_NAME)
         dim = (picture.shape[1], picture.shape[0])
         for row in db.select():
@@ -137,7 +141,7 @@ def create_image_with_text(up_text: str, low_text: str, picture: bytes, target_f
 
 def add_text_to_image(text: str, image: Image, height: int):
     draw_text = ImageDraw.Draw(image)
-    font= adaptive_font_generator(draw_text, text, image.width, image.height)
+    font = adaptive_font_generator(draw_text, text, image.width, image.height)
     draw_text.text(
         ((image.width - draw_text.textsize(text, font)[0]) / 2, height),
         text,
